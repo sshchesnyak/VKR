@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LandSafe</title>
+    <meta name="description" content="Land Safe Project 2022">
+    <meta name="author" content="Sergey Shchesnyak IU3-83B">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js" integrity="sha384-IQsoLXl5PILFhosVNubq5LC7Qb9DXgDA9i+tQ8Zj3iwWAwPtgFTxbJ8NT4GN1R8p" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.min.js" integrity="sha384-cVKIPhGWiC2Al4u+LWgxfKTRIcfu0JTxR+EQDz/bgldoEyl4H0zUF0QKbrJ0EcQF" crossorigin="anonymous"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-md bg-primary navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">LandSafe</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#collapsibleNavbar">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="collapsibleNavbar">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/main">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/structure">Aggregation</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div class="row">
+        <div class="col-md-3 min-vh-100 border border-dark">
+            <div id="accordion" class="mt-3 mb-3 ms-2 me-1">
+                <div class="card">
+                    <div class="card-header">
+                        <a class="btn" data-bs-toggle="collapse" href="#collapseOne">
+                            1. Выберите зону полета
+                        </a>
+                    </div>
+                    <div id="collapseOne" class="collapse show" data-bs-parent="#accordion">
+                        <div class="card-body">
+                            {% csrf_token %}
+                            <div class="dropdown">
+                                Выберите область на карте, в рамках которой осуществлятся полет
+                                <button class="btn btn-light dropdown-toggle" type="button" id="las_file_select_btn" data-bs-toggle="dropdown" aria-expanded="false">
+                                    Выбор области
+                                </button>
+                                <ul class="dropdown-menu" role="menu" aria-labelledby="las_file_select_btn" id="lasFileOptions">
+                                    <script>
+
+                                        function getCookie(name) {
+                                            let cookieValue = null;
+                                            if (document.cookie && document.cookie !== '') {
+                                                const cookies = document.cookie.split(';');
+                                                for (let i = 0; i < cookies.length; i++) {
+                                                    const cookie = cookies[i].trim();
+                                                    // Does this cookie string begin with the name we want?
+                                                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                                                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            return cookieValue;
+                                        }
+
+                                        const las_file_dropdown = document.getElementById("lasFileOptions");
+                                        const las_file_button = document.getElementById("las_file_select_btn");
+                                        const las_file_options = JSON.parse("{{ data|escapejs }}")['las_data'];
+                                        const csrf_cookie = getCookie('csrftoken');
+                                        var las_Rectangle;
+                                        console.log(csrf_cookie);
+                                        for (var i = 0; i < las_file_options.length; i++){
+                                            var opt = las_file_options[i];
+                                            var li = document.createElement("li");
+                                            var a = document.createElement("a");
+                                            var txt = document.createTextNode(opt);
+                                            a.appendChild(txt);
+                                            a.href = "#";
+                                            li.appendChild(a);
+                                            las_file_dropdown.appendChild(li);
+                                        }
+
+                                        las_file_dropdown.addEventListener("click",function(e){
+                                            console.log("Element clicked!")
+                                            las_file_button.innerText = e.target.innerText
+                                            landUseCheckBox.checked = false;
+                                            landUseCheckBox.disabled = true;
+                                            residentialCheckBox.checked = false;
+                                            residentialCheckBox.disabled = true;
+                                            relaxationCheckBox.checked = false;
+                                            relaxationCheckBox.disabled = true;
+                                            protectedCheckBox.checked = false;
+                                            protectedCheckBox.disabled = true;
+                                            propertiesCheckBox.checked = false;
+                                            propertiesCheckBox.disabled = true;
+                                            roadsCheckBox.checked = false;
+                                            roadsCheckBox.disabled = true;
+                                            resultsButton.disabled = true;
+                                            fetch("lasfileupdate/",{
+                                                method: "POST",
+                                                credentials: "same-origin",
+                                                headers: {
+                                                    "X-Requested-With": "XMLHttpRequest",
+                                                    "X-CSRFToken": csrf_cookie,
+                                                },
+                                                body: JSON.stringify({payload: e.target.innerText})
+                                            })
+                                            .then(response => {
+                                                return response.json()
+                                            })
+                                            .then(data => {
+                                                console.log(data)
+                                                fetch("lasrectanle/", {
+                                                    method: "GET",
+                                                    headers: {
+                                                        "X-Requested-With": "XMLHttpRequest",
+                                                    }
+                                                })
+                                                .then(response => {
+                                                    return response.json();
+                                                })
+                                                .then(d => {
+                                                    var resp = JSON.parse(d.context);
+                                                    if (las_Rectangle!=null) las_Rectangle.setMap(null);
+                                                    las_Rectangle = new google.maps.Polygon({
+                                                        paths: polygonBuilder(resp),
+                                                        strokeColor: "#FFFFFF",
+                                                        strokeOpacity: 0.8,
+                                                        strokeWeight: 2,
+                                                        fillColor: "#FFFFFF",
+                                                        fillOpacity: 0,
+                                                    });
+                                                    las_Rectangle.setMap(map)
+                                                    landUseCheckBox.disabled = false;
+                                                    residentialCheckBox.disabled = false;
+                                                    relaxationCheckBox.disabled = false;
+                                                    protectedCheckBox.disabled = false;
+                                                    propertiesCheckBox.disabled = false;
+                                                    roadsCheckBox.disabled = false;
+                                                    resultsButton.disabled = false;
+                                                })
+                                            });
+                                        })
+                                    </script>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <a class="collapsed btn" data-bs-toggle="collapse" href="#collapseTwo">
+                            2. Отображение местоположений
+                        </a>
+                    </div>
+                    <div id="collapseTwo" class="collapse" data-bs-parent="#accordion">
+                        <div class="card-body">
+                            Выберите объекты, которые требуется отобразить
+                             <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="land_use" onclick="getLandUse()" disabled>
+                                <label class="form-check-label" id="loadTestLabel">Данные о типе подстилающей поверхности</label>
+                            </div>
+                             <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="residential" onclick="getResidential()" disabled>
+                                <label class="form-check-label" id="loadTestLabel">Местоположение населенных районов</label>
+                            </div>
+                             <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="relaxation" onclick="getRelaxation()" disabled>
+                                <label class="form-check-label" id="loadTestLabel">Местоположение зон отдыха</label>
+                            </div>
+                             <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="protected" onclick="getProtected()" disabled>
+                                <label class="form-check-label" id="loadTestLabel">Местоположение зон, охраняемых гос-вом</label>
+                            </div>
+                             <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="properties" onclick="getProperties()" disabled>
+                                <label class="form-check-label" id="loadTestLabel">Местоположение частной собственности</label>
+                            </div>
+                             <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="roads" onclick="getRoads()" disabled>
+                                <label class="form-check-label" id="loadTestLabel">Местоположение дорог</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <a class="collapsed btn" data-bs-toggle="collapse" href="#collapseThree">
+                            3. Оценки пригодности
+                        </a>
+                    </div>
+                    <div id="collapseThree" class="collapse" data-bs-parent="#accordion">
+                        <div class="card-body">
+                            Нажмите для получения оценок пригодности квадратов зоны полета для совершения аварийной посадки
+                            <button type="button" class="btn btn-outline-primary" id="results" onclick="getResults()" disabled>Получить оценки</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-9">
+            <div id="googleMap" class="min-vh-100 min-vw-100"></div>
+        </div>
+    </div>
+
+    <script>
+
+        var map;
+        var testRectangle;
+        var landUseRectangles = [];
+        var residentialRectangles = [];
+        var relaxationRectangles = [];
+        var protectedRectangles = [];
+        var propertiesRectangles = [];
+        var roadsRectangles = [];
+        var resultsRectangles = []
+
+        var landUseCheckBox = document.getElementById("land_use");
+        var residentialCheckBox = document.getElementById("residential");
+        var relaxationCheckBox = document.getElementById("relaxation");
+        var protectedCheckBox = document.getElementById("protected");
+        var propertiesCheckBox = document.getElementById("properties");
+        var roadsCheckBox = document.getElementById("roads");
+
+        var resultsButton = document.getElementById("results");
+
+        function polygonBuilder(array){
+            let set = [];
+            for (var i = 0; i<array.length; i++){
+                const gdata = new google.maps.LatLng(array[i][0],array[i][1]);
+                set.push(gdata);
+            }
+            return set
+        }
+
+        function reversePolygonBuilder(array){
+            let set = [];
+            for (var i = 0; i<array.length; i++){
+                const gdata = new google.maps.LatLng(array[i][1],array[i][0]);
+                set.push(gdata);
+            }
+            return set
+        }
+
+        function reverseLineBuilder(array){
+            let set = [];
+            for (var i = 0; i<array.length; i++){
+                const gdata = new google.maps.LatLng(array[i][1],array[i][0]);
+                set.push(gdata);
+            }
+            return set
+        }
+
+        function getColor(value){
+            var r=0;
+            var g=0;
+            var b=0;
+            var res;
+            if (value<=0.5){
+                r = "ff";
+                g = (Math.round(255*value)).toString(16);
+                b = "00";
+                res ="#"+r+g+b;
+            }
+            else{
+                r = (Math.round(255*(1-value))).toString(16);
+                g = "ff";
+                b = "00";
+                res ="#"+r+g+b;
+            }
+            return res
+        }
+
+        function getLandUse(){
+            fetch("landuse/", {
+                method: "GET",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                }
+            })
+                .then(response => {
+                    return response.json();
+                }).then(d => {
+                    resp = JSON.parse(d.context);
+                    var i = 0;
+                    if (landUseRectangles.length !== 0){
+                        for (i = 0; i<landUseRectangles.length; i++){
+                            landUseRectangles[i].setMap(null);
+                        }
+                        while (landUseRectangles.length >0){
+                            landUseRectangles.pop();
+                        }
+                    }
+                    console.log(landUseRectangles.length);
+                    console.log(landUseRectangles);
+                    console.log(resp.length);
+                    console.log(resp[resp.length-1])
+                    for (i = 0; i<resp.length; i++){
+                        var polygons = JSON.parse(resp[i]).polygons;
+                        var use_type = JSON.parse(resp[i]).use_type;
+                        var color = JSON.parse(resp[i]).rand;
+                        for (var j = 0; j<polygons.length;j++){
+                            var use_rectangle = new google.maps.Polygon({
+                                paths: reversePolygonBuilder(polygons[j]),
+                                strokeColor: "#ffffff",
+                                strokeOpacity: 0.8,
+                                strokeWeight: 2,
+                                fillColor: "#ffffff",
+                                fillOpacity: 0,
+                            });
+                            use_rectangle.setMap(map)
+                            //attachPolygonInfoWindow(use_rectangle, use_type.toString())
+                            landUseRectangles.push(use_rectangle)
+                            /*
+                            function attachPolygonInfoWindow(polygon, text) {
+                                var infoWindow = new google.maps.InfoWindow();
+                                google.maps.event.addListener(polygon, 'mouseover', function (e) {
+                                    infoWindow.setContent(text);
+                                    var latLng = e.latLng;
+                                    infoWindow.setPosition(latLng);
+                                    infoWindow.open(map);
+                                });
+                            }
+                            */
+                        }
+                    }
+                })
+        }
+
+        function getResidential(){
+            fetch("residential/", {
+                method: "GET",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                }
+            })
+                .then(response => {
+                    return response.json();
+                }).then(d => {
+                    resp = JSON.parse(d.context);
+                    var i = 0;
+                    if (residentialRectangles.length !== 0){
+                        for (i = 0; i<residentialRectangles.length; i++){
+                            residentialRectangles[i].setMap(null);
+                        }
+                        while (residentialRectangles.length >0){
+                            residentialRectangles.pop();
+                        }
+                    }
+                    console.log(residentialRectangles.length);
+                    console.log(residentialRectangles);
+                    console.log(resp.length);
+                    console.log(resp[resp.length-1])
+                    for (i = 0; i<resp.length; i++){
+                        var polygons = JSON.parse(resp[i]).polygons;
+                        var use_type = JSON.parse(resp[i]).intent;
+                        console.log(polygons.length);
+                        for (var j = 0; j<polygons.length;j++){
+                            var use_rectangle = new google.maps.Polygon({
+                                paths: reversePolygonBuilder(polygons[j]),
+                                strokeColor: "#00FFCC",
+                                strokeOpacity: 0.8,
+                                strokeWeight: 2,
+                                fillColor: "#00FFCC",
+                                fillOpacity: 0,
+                            });
+                            use_rectangle.setMap(map)
+                            residentialRectangles.push(use_rectangle)
+                        }
+                    }
+                })
+        }
+
+        function getRelaxation(){
+            fetch("relaxation/", {
+                method: "GET",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                }
+            })
+                .then(response => {
+                    return response.json();
+                }).then(d => {
+                    resp = JSON.parse(d.context);
+                    var i = 0;
+                    if (relaxationRectangles.length !== 0){
+                        for (i = 0; i<relaxationRectangles.length; i++){
+                            relaxationRectangles[i].setMap(null);
+                        }
+                        while (relaxationRectangles.length >0){
+                            relaxationRectangles.pop();
+                        }
+                    }
+                    console.log(relaxationRectangles.length);
+                    console.log(relaxationRectangles);
+                    console.log(resp.length);
+                    console.log(resp[resp.length-1])
+                    for (i = 0; i<resp.length; i++){
+                        var polygons = JSON.parse(resp[i]).polygon;
+                        var use_type = JSON.parse(resp[i]).intent;
+                        console.log(polygons.length);
+                        for (var j = 0; j<polygons.length;j++){
+                            var use_rectangle = new google.maps.Polygon({
+                                paths: reversePolygonBuilder(polygons[j]),
+                                strokeColor: "#FFFF00",
+                                strokeOpacity: 0.8,
+                                strokeWeight: 2,
+                                fillColor: "#FFFF00",
+                                fillOpacity: 0,
+                            });
+                            use_rectangle.setMap(map)
+                            relaxationRectangles.push(use_rectangle)
+                        }
+                    }
+                })
+        }
+
+        function getProtected(){
+            fetch("protected/", {
+                method: "GET",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                }
+            })
+                .then(response => {
+                    return response.json();
+                }).then(d => {
+                    resp = JSON.parse(d.context);
+                    var i = 0;
+                    if (protectedRectangles.length !== 0){
+                        for (i = 0; i<protectedRectangles.length; i++){
+                            protectedRectangles[i].setMap(null);
+                        }
+                        while (protectedRectangles.length >0){
+                            protectedRectangles.pop();
+                        }
+                    }
+                    console.log(protectedRectangles.length);
+                    console.log(protectedRectangles);
+                    console.log(resp.length);
+                    console.log(resp[resp.length-1])
+                    for (i = 0; i<resp.length; i++){
+                        var polygons = JSON.parse(resp[i]).polygons;
+                        var use_type = JSON.parse(resp[i]).object_type;
+                        console.log(polygons.length);
+                        for (var j = 0; j<polygons.length;j++){
+                            var use_rectangle = new google.maps.Polygon({
+                                paths: reversePolygonBuilder(polygons[j]),
+                                strokeColor: "#000000",
+                                strokeOpacity: 0.8,
+                                strokeWeight: 2,
+                                fillColor: "#000000",
+                                fillOpacity: 0,
+                            });
+                            use_rectangle.setMap(map)
+                            protectedRectangles.push(use_rectangle)
+                        }
+                    }
+                })
+        }
+
+        function getProperties(){
+            fetch("properties/", {
+                method: "GET",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                }
+            })
+                .then(response => {
+                    return response.json();
+                }).then(d => {
+                    resp = JSON.parse(d.context);
+                    var i = 0;
+                    if (propertiesRectangles.length !== 0){
+                        for (i = 0; i<propertiesRectangles.length; i++){
+                            propertiesRectangles[i].setMap(null);
+                        }
+                        while (propertiesRectangles.length >0){
+                            propertiesRectangles.pop();
+                        }
+                    }
+                    console.log(propertiesRectangles.length);
+                    console.log(propertiesRectangles);
+                    console.log(resp.length);
+                    console.log(resp[resp.length-1])
+                    for (i = 0; i<resp.length; i++){
+                        var polygons = JSON.parse(resp[i]).polygons;
+                        console.log(polygons.length);
+                        for (var j = 0; j<polygons.length;j++){
+                            var use_rectangle = new google.maps.Polygon({
+                                paths: reversePolygonBuilder(polygons[j]),
+                                strokeColor: "#0000cc",
+                                strokeOpacity: 0.8,
+                                strokeWeight: 2,
+                                fillColor: "#0000cc",
+                                fillOpacity: 0,
+                            });
+                            use_rectangle.setMap(map)
+                            propertiesRectangles.push(use_rectangle)
+                        }
+                    }
+                })
+        }
+
+        function getRoads(){
+            fetch("roads/", {
+                method: "GET",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                }
+            })
+                .then(response => {
+                    return response.json();
+                }).then(d => {
+                    resp = JSON.parse(d.context);
+                    var i = 0;
+                    if (roadsRectangles.length !== 0){
+                        for (i = 0; i<roadsRectangles.length; i++){
+                            roadsRectangles[i].setMap(null);
+                        }
+                        while (roadsRectangles.length >0){
+                            roadsRectangles.pop();
+                        }
+                    }
+                    console.log(roadsRectangles.length);
+                    console.log(roadsRectangles);
+                    console.log(resp.length);
+                    console.log(resp[resp.length-1])
+                    for (i = 0; i<resp.length; i++){
+                        var object_lines = JSON.parse(resp[i]).object_lines;
+                        var object_type = JSON.parse(resp[i]).object_type;
+                        console.log(object_lines.length);
+                        for (var j = 0; j<object_lines.length;j++){
+                            var use_rectangle = new google.maps.Polygon({
+                                paths: reverseLineBuilder(object_lines[j]),
+                                strokeColor: "#ff0000",
+                                geodesic: true,
+                                strokeOpacity: 0.8,
+                                strokeWeight: 2,
+                            });
+                            use_rectangle.setMap(map)
+                            roadsRectangles.push(use_rectangle)
+                        }
+                    }
+                })
+        }
+
+        function getResults(){
+            fetch("results/", {
+                method: "GET",
+                headers: {
+                    "X-Requested-With": "XMLHttpRequest",
+                }
+            })
+                .then(response => {
+                    return response.json();
+                }).then(d => {
+                    resp = JSON.parse(d.context);
+                    var i = 0;
+                    if (resultsRectangles.length !== 0){
+                        for (i = 0; i<resultsRectangles.length; i++){
+                            resultsRectangles[i].setMap(null);
+                        }
+                        while (resultsRectangles.length >0){
+                            resultsRectangles.pop();
+                        }
+                    }
+                    console.log(resultsRectangles.length);
+                    console.log(resultsRectangles);
+                    console.log(resp.length);
+                    console.log(resp[resp.length-1])
+                    for (i = 0; i<resp.length; i++){
+                        var polygon = JSON.parse(resp[i]).polygon;
+                        var grade = JSON.parse(resp[i]).a_result;
+                        var best = JSON.parse(resp[i]).best;
+                        console.log('Polygon')
+                        console.log(grade)
+                        console.log(best)
+                        var color;
+                        var borderColor;
+                        if (best){
+                            color = "#009933"
+                            borderColor = "#009933"
+                        }
+                        else{
+                            color = getColor(grade)
+                            borderColor = "#ffffff"
+                        }
+                        var use_rectangle = new google.maps.Polygon({
+                            paths: reversePolygonBuilder(polygon),
+                            strokeColor: borderColor,
+                            strokeOpacity: 0.8,
+                            strokeWeight: 2,
+                            fillColor: color,
+                            fillOpacity: 0.4,
+                        });
+                        use_rectangle.setMap(map)
+                        resultsRectangles.push(use_rectangle)
+                    }
+                })
+        }
+
+        function myMap() {
+            var mapProp= {
+                center:new google.maps.LatLng(-36.86667,174.76667),
+                zoom:9,
+            };
+
+            map = new google.maps.Map(document.getElementById("googleMap"),mapProp);
+        }
+
+        function getPolygon(){
+            if (testRectangle==null){
+                const area_coords = [
+                    {lat: -36.233134906080124, lng: 174.46353556590688},
+                    {lat: -36.226580366069456, lng: 174.46353556590688},
+                    {lat: -36.226580366069456, lng: 174.468753978108},
+                    {lat: -36.233134906080124, lng: 174.468753978108},
+                    {lat: -36.233134906080124, lng: 174.46353556590688},
+                ];
+                testRectangle = new google.maps.Polygon({
+                    paths: area_coords,
+                    strokeColor: "#33CC33",
+                    strokeOpacity: 0.8,
+                    strokeWeight: 2,
+                    fillColor: "#33CC33",
+                    fillOpacity: 0.35,
+                });
+            }
+
+            return testRectangle
+        }
+
+        function createRectangle(){
+
+            var myRectangle = getPolygon();
+
+            var checkBox = document.getElementById("loadTestRectangle")
+            var label = document.getElementById("loadTestLabel")
+            if (checkBox.checked){
+                label.textContent = "DISP"
+                myRectangle.setMap(map)
+            } else{
+                label.textContent = "HIDD"
+                myRectangle.setMap(null)
+            }
+
+        }
+    </script>
+
+
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCu9R1K_omvpcOv_M__0ejjUQ9r8_HpNG8&callback=myMap" defer></script>
+
+</body>
+</html>
